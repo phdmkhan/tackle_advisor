@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ONYX 갑오징어 채비 어드바이저</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;600;700;800;900&display=swap');
+    * { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif; }
+    
+    /* 야외 시인성 극대화 네온 글로우 */
+    .neon-cyan { text-shadow: 0 0 10px rgba(6, 182, 212, 0.6); }
+    .neon-yellow { text-shadow: 0 0 10px rgba(250, 204, 21, 0.6); }
+    .neon-emerald { text-shadow: 0 0 10px rgba(16, 185, 129, 0.6); }
+    .glow-box-cyan { box-shadow: 0 0 20px -5px rgba(6, 182, 212, 0.35); }
+    .glow-box-yellow { box-shadow: 0 0 25px -5px rgba(250, 204, 21, 0.4); }
+
+    /* 커스텀 슬라이더 스타일 */
+    input[type=range] {
+      -webkit-appearance: none;
+      background: #1e293b;
+      height: 8px;
+      border-radius: 4px;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 22px;
+      width: 22px;
+      border-radius: 50%;
+      background: #06b6d4;
+      border: 2px solid #f8fafc;
+      box-shadow: 0 0 8px rgba(6, 182, 212, 0.8);
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body class="bg-[#050B14] text-slate-100 min-h-screen flex flex-col antialiased selection:bg-cyan-500 selection:text-black">
+
+  <!-- =============================== -->
+  <!-- 1. 네비게이션 & 헤더 (ONYX호 브랜딩) -->
+  <!-- =============================== -->
+  <header class="bg-[#0B1528]/95 backdrop-blur border-b border-cyan-900/50 sticky top-0 z-50 px-4 py-3 shadow-lg">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+          <i class="fa-solid fa-anchor text-slate-900 text-lg"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded text-[11px] font-black tracking-wider bg-yellow-400 text-slate-950">ONYX호</span>
+            <h1 class="text-lg font-black tracking-tight text-white flex items-center gap-1.5">
+              갑오징어 채비 어드바이저
+            </h1>
+          </div>
+          <p class="text-xs text-cyan-400/80 font-medium">선속·조류 기반 에기 유영 높이 & 가짓줄·단차 실시간 시뮬레이터</p>
+        </div>
+      </div>
+
+      <!-- GPS 실시간 수신 제어 배지 -->
+      <div class="flex items-center gap-2">
+        <button id="gpsToggleBtn" onclick="toggleGPS()" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-2 bg-slate-800 text-slate-300 border border-slate-700 hover:border-cyan-500">
+          <span id="gpsDot" class="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
+          <span id="gpsStatusText">스마트폰 GPS 연동</span>
+        </button>
+        <button onclick="toggleAudio()" id="audioBtn" class="p-2 rounded-lg bg-slate-800/80 text-slate-400 hover:text-yellow-400 border border-slate-700 text-xs">
+          <i class="fa-solid fa-volume-high"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- =============================== -->
+  <!-- 2. 메인 컨테이너 레이아웃 -->
+  <!-- =============================== -->
+  <main class="max-w-7xl mx-auto w-full p-3 sm:p-5 grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1">
+
+    <!-- 좌측 컬럼: 제어 패널 & 추천 결과 (5 cols) -->
+    <section class="lg:col-span-5 flex flex-col gap-4">
+
+      <!-- 배 운항 모드 탭 -->
+      <div class="bg-[#0D1B33] border border-cyan-900/40 rounded-2xl p-4 shadow-md">
+        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5 flex items-center justify-between">
+          <span><i class="fa-solid fa-ship text-cyan-400 mr-1.5"></i>배 운항 모드 선택</span>
+          <span id="modeDescription" class="text-[11px] text-cyan-400 font-normal">바닥권 유속 감쇄(70%) 적용</span>
+        </label>
+        <div class="grid grid-cols-2 gap-2 bg-slate-900/80 p-1.5 rounded-xl border border-slate-800">
+          <button id="modeDriftBtn" onclick="setMode('drift')" class="py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 bg-cyan-500 text-slate-950 shadow-md">
+            <i class="fa-solid fa-wind"></i> 자유 표류 (배 흘림)
+          </button>
+          <button id="modeHoldBtn" onclick="setMode('hold')" class="py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 text-slate-400 hover:text-white">
+            <i class="fa-solid fa-compass"></i> 배 잡기 (정점 유지)
+          </button>
+        </div>
+      </div>
+
+      <!-- 선속 & 조류 세기 슬라이더 카드 -->
+      <div class="bg-[#0D1B33] border border-cyan-900/40 rounded-2xl p-4 shadow-md flex flex-col gap-4">
+        
+        <!-- 선속 (SOG) -->
+        <div>
+          <div class="flex justify-between items-center mb-1.5">
+            <span class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+              <i class="fa-solid fa-gauge-high text-yellow-400"></i> 배 대지속력 (SOG)
+            </span>
+            <div class="flex items-center gap-1">
+              <span id="sogVal" class="text-base font-extrabold text-yellow-400">0.8</span>
+              <span class="text-xs text-slate-400">knots</span>
+            </div>
+          </div>
+          <input type="range" id="sogSlider" min="0.0" max="2.5" step="0.1" value="0.8" oninput="onParamChange()" class="w-full">
+          <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+            <span>0.0 (정지)</span>
+            <span>0.8 (이상적)</span>
+            <span>1.5 (고속 표류)</span>
+            <span>2.5 kn</span>
+          </div>
+        </div>
+
+        <!-- 바다 순수 조류 속도 (배 잡기 모드용 또는 합성용) -->
+        <div id="currentControlGroup">
+          <div class="flex justify-between items-center mb-1.5">
+            <span class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+              <i class="fa-solid fa-water text-cyan-400"></i> 바다 조류 유속
+            </span>
+            <div class="flex items-center gap-1">
+              <span id="currentVal" class="text-base font-extrabold text-cyan-400">0.8</span>
+              <span class="text-xs text-slate-400">knots</span>
+            </div>
+          </div>
+          <input type="range" id="currentSlider" min="0.0" max="2.0" step="0.1" value="0.8" oninput="onParamChange()" class="w-full">
+          <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+            <span>0.0 (정조)</span>
+            <span>0.6 (순조)</span>
+            <span>1.2 (본류)</span>
+            <span>2.0 kn</span>
+          </div>
+        </div>
+
+        <!-- 상대 유속(V_rel) 계산 결과 배지 -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-arrows-split-up-and-left text-cyan-400 text-sm"></i>
+            <div>
+              <div class="text-[11px] text-slate-400">에기가 받는 상대 유속 (V_rel)</div>
+              <div class="text-[10px] text-slate-500" id="vrelSubtext">배 흘림 보정: SOG 0.8kn × 0.7</div>
+            </div>
+          </div>
+          <div class="text-right">
+            <span id="vrelVal" class="text-lg font-black text-cyan-300">0.56</span>
+            <span class="text-xs text-slate-400 font-bold">knots</span>
+          </div>
+        </div>
+
+        <!-- 빠른 유속 프리셋 버튼 -->
+        <div class="grid grid-cols-4 gap-1.5 pt-1">
+          <button onclick="setSpeedPreset(0.2, 0.2)" class="py-1.5 text-[11px] rounded bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 font-semibold">정조 (0.2kn)</button>
+          <button onclick="setSpeedPreset(0.6, 0.6)" class="py-1.5 text-[11px] rounded bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 font-semibold">완만 (0.6kn)</button>
+          <button onclick="setSpeedPreset(1.0, 1.0)" class="py-1.5 text-[11px] rounded bg-slate-800/80 hover:bg-slate-700 text-cyan-300 border border-cyan-800/50 font-semibold">적정 (1.0kn)</button>
+          <button onclick="setSpeedPreset(1.6, 1.6)" class="py-1.5 text-[11px] rounded bg-slate-800/80 hover:bg-slate-700 text-rose-300 border border-rose-900/50 font-semibold">격류 (1.6kn)</button>
+        </div>
+      </div>
+
+      <!-- 채비 세부 사양 (목표 높이, 봉돌 띄움, 에기 비중) -->
+      <div class="bg-[#0D1B33] border border-cyan-900/40 rounded-2xl p-4 shadow-md flex flex-col gap-3.5">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+          <span class="text-xs font-bold text-slate-300"><i class="fa-solid fa-sliders text-cyan-400 mr-1.5"></i>타깃 & 채비 파라미터</span>
+          <span class="text-[11px] text-emerald-400 font-semibold"><i class="fa-solid fa-crosshairs mr-1"></i>킬링존: 바닥 10~15cm</span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <!-- 목표 에기 높이 -->
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <span class="text-[11px] text-slate-400">목표 에기 높이</span>
+              <span id="targetHeightVal" class="text-xs font-bold text-emerald-400">12 cm</span>
+            </div>
+            <input type="range" id="targetHeightSlider" min="8" max="22" step="1" value="12" oninput="onParamChange()" class="w-full">
+          </div>
+
+          <!-- 봉돌 띄움 높이 (바닥 스침 5cm 기준) -->
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <span class="text-[11px] text-slate-400">봉돌 바닥 이격</span>
+              <span id="liftHeightVal" class="text-xs font-bold text-yellow-400">5 cm (스침)</span>
+            </div>
+            <input type="range" id="liftHeightSlider" min="2" max="15" step="1" value="5" oninput="onParamChange()" class="w-full">
+          </div>
+        </div>
+
+        <!-- 에기 타입 선택 -->
+        <div>
+          <label class="text-[11px] text-slate-400 block mb-1.5">장착 에기 타입 (자체 침강력)</label>
+          <div class="grid grid-cols-3 gap-1.5">
+            <button id="egiTypeSlow" onclick="setEgiType('slow')" class="py-1.5 px-2 rounded-lg text-[11px] font-bold border transition bg-cyan-900/50 text-cyan-300 border-cyan-500">
+              수평 슬로우<br><span class="text-[9px] font-normal opacity-80">(0.2g 침강)</span>
+            </button>
+            <button id="egiTypeNormal" onclick="setEgiType('normal')" class="py-1.5 px-2 rounded-lg text-[11px] font-bold border transition bg-slate-900 text-slate-400 border-slate-700">
+              표준 밸런스<br><span class="text-[9px] font-normal opacity-80">(0.45g 침강)</span>
+            </button>
+            <button id="egiTypeHeavy" onclick="setEgiType('heavy')" class="py-1.5 px-2 rounded-lg text-[11px] font-bold border transition bg-slate-900 text-slate-400 border-slate-700">
+              틴셀/고비중<br><span class="text-[9px] font-normal opacity-80">(0.8g 침강)</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ★ 실시간 추천 결과 카드 (핵심 하이라이트) ★ -->
+      <div class="bg-gradient-to-br from-[#0F2347] to-[#0A162B] border-2 border-yellow-400/80 rounded-2xl p-4 shadow-xl glow-box-yellow relative overflow-hidden">
+        <div class="absolute -right-4 -bottom-4 opacity-10 text-yellow-400 text-8xl pointer-events-none">
+          <i class="fa-solid fa-bullseye"></i>
+        </div>
+
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full bg-yellow-400 animate-pulse"></span>
+            <span class="text-xs font-black text-yellow-300 uppercase tracking-wider">ONYX 추천 최적 세팅</span>
+          </div>
+          <span id="hitZoneBadge" class="px-2 py-0.5 rounded-full text-[11px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+            🎯 킬링존(10~15cm) 정조준
+          </span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 mb-3">
+          <!-- 추천 봉돌 단차 -->
+          <div class="bg-slate-950/70 rounded-xl p-3 border border-yellow-500/30">
+            <span class="text-[11px] text-slate-400 block font-semibold mb-1">
+              추천 봉돌 단차 <span class="text-[10px] text-yellow-400/90">(봉돌 포함)</span>
+            </span>
+            <div class="flex items-baseline gap-1">
+              <span id="recDropperVal" class="text-3xl font-black text-yellow-400 tracking-tight">10</span>
+              <span class="text-sm font-bold text-slate-300">cm</span>
+            </div>
+            <span class="text-[10px] text-slate-400 block mt-0.5" id="dropperTip">삼각도래 ~ 봉돌 바닥끝</span>
+          </div>
+
+          <!-- 추천 가짓줄 길이 -->
+          <div class="bg-slate-950/70 rounded-xl p-3 border border-cyan-500/30">
+            <span class="text-[11px] text-slate-400 block font-semibold mb-1">
+              추천 가짓줄 길이 <span class="text-[10px] text-cyan-400/90">(삼각도래~에기)</span>
+            </span>
+            <div class="flex items-baseline gap-1">
+              <span id="recBranchVal" class="text-3xl font-black text-cyan-400 tracking-tight">30</span>
+              <span class="text-sm font-bold text-slate-300">cm</span>
+            </div>
+            <span class="text-[10px] text-slate-400 block mt-0.5" id="branchTip">조류에 최적화된 나풀거림</span>
+          </div>
+        </div>
+
+        <!-- 3개 보조 지표: 예상 에기 높이 / 권장 봉돌 호수 / 가짓줄 기울기 -->
+        <div class="grid grid-cols-3 gap-2 text-center bg-slate-900/60 p-2.5 rounded-xl border border-slate-800">
+          <div>
+            <span class="text-[10px] text-slate-400 block">예상 에기 높이</span>
+            <span id="predEgiHeightVal" class="text-sm font-extrabold text-emerald-400">12.0 cm</span>
+          </div>
+          <div class="border-x border-slate-800">
+            <span class="text-[10px] text-slate-400 block">권장 봉돌 호수</span>
+            <span id="recSinkerWeightVal" class="text-sm font-extrabold text-yellow-400">14 ~ 16호</span>
+          </div>
+          <div>
+            <span class="text-[10px] text-slate-400 block">가짓줄 수평각</span>
+            <span id="branchAngleVal" class="text-sm font-extrabold text-cyan-300">수평 4°</span>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- 우측 컬럼: 인터랙티브 수중 2D 캔버스 & 실전 팁 (7 cols) -->
+    <section class="lg:col-span-7 flex flex-col gap-4">
+
+      <!-- 수중 시뮬레이션 캔버스 컨테이너 -->
+      <div class="bg-[#081224] border border-cyan-900/50 rounded-2xl p-3 sm:p-4 shadow-xl flex flex-col glow-box-cyan">
+        
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-cyan-950 text-cyan-300 border border-cyan-800">
+              <i class="fa-solid fa-eye text-cyan-400 mr-1"></i>실시간 수중 시각화
+            </span>
+            <span class="text-xs text-slate-400">물속 실제 채비 거동</span>
+          </div>
+
+          <!-- 캔버스 컨트롤 (케이무라 UV 발광 토글 / 일시정지) -->
+          <div class="flex items-center gap-2">
+            <button onclick="toggleKeimura()" id="keimuraBtn" class="px-2.5 py-1 rounded-md text-[11px] font-semibold transition bg-purple-950/80 text-purple-300 border border-purple-700/60 hover:bg-purple-900 flex items-center gap-1">
+              <i class="fa-solid fa-wand-magic-sparkles text-purple-400"></i> 케이무라 UV
+            </button>
+            <button onclick="toggleSimulation()" id="simPlayBtn" class="p-1 px-2.5 rounded-md text-[11px] font-semibold bg-slate-800 text-slate-300 hover:text-white border border-slate-700">
+              <i class="fa-solid fa-pause"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- HTML5 Canvas -->
+        <div class="relative w-full aspect-[16/10] bg-[#040814] rounded-xl overflow-hidden border border-slate-800 shadow-inner">
+          <canvas id="underwaterCanvas" class="w-full h-full block"></canvas>
+
+          <!-- 캔버스 위 오버레이 정보 배지 -->
+          <div class="absolute top-3 left-3 pointer-events-none flex flex-col gap-1.5">
+            <div class="bg-slate-900/80 backdrop-blur px-2.5 py-1 rounded-lg border border-cyan-900/60 text-[11px] flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+              <span class="text-slate-300">조류 방향:</span>
+              <span class="font-bold text-cyan-300">좌 ➔ 우 (동일)</span>
+            </div>
+            <div class="bg-slate-900/80 backdrop-blur px-2.5 py-1 rounded-lg border border-emerald-900/60 text-[11px] flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded bg-emerald-500/50 border border-emerald-400"></span>
+              <span class="text-slate-300">녹색 영역:</span>
+              <span class="font-bold text-emerald-400">갑오징어 킬링존 (10~15cm)</span>
+            </div>
+          </div>
+
+          <div class="absolute top-3 right-3 pointer-events-none text-right">
+            <div class="bg-slate-900/80 backdrop-blur px-2.5 py-1 rounded-lg border border-slate-700 text-[11px]">
+              <span class="text-slate-400">스케일:</span>
+              <span class="font-bold text-yellow-300">1 px = 0.5 cm</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 캔버스 하단 메트릭 요약 -->
+        <div class="flex flex-wrap items-center justify-between text-xs text-slate-400 mt-2 px-1 gap-2">
+          <div class="flex items-center gap-3">
+            <span>봉돌 띄움: <strong class="text-yellow-400" id="cvSinkerLift">5 cm</strong></span>
+            <span>삼각도래 높이: <strong class="text-cyan-400" id="cvSwivelHeight">15 cm</strong></span>
+            <span>에기 최종 높이: <strong class="text-emerald-400" id="cvEgiHeight">12 cm</strong></span>
+          </div>
+          <div class="text-[11px] text-slate-500">
+            <i class="fa-solid fa-circle-info mr-1"></i>갑오징어는 에기가 수평 안정화되는 순간 촉완을 발사합니다.
+          </div>
+        </div>
+      </div>
+
+      <!-- 현장 실전 액션 가이드 (유속 기반 다이내믹 팁) -->
+      <div class="bg-[#0D1B33] border border-cyan-900/40 rounded-2xl p-4 shadow-md flex flex-col gap-3">
+        <div class="flex items-center justify-between">
+          <h3 class="text-xs font-bold text-yellow-400 uppercase tracking-wider flex items-center gap-1.5">
+            <i class="fa-solid fa-lightbulb"></i> 현재 조류 맞춤 ONYX 실전 액션 팁
+          </h3>
+          <span id="flowConditionBadge" class="text-[11px] px-2 py-0.5 rounded font-bold bg-cyan-950 text-cyan-300 border border-cyan-800">
+            적정 유속 조건 (0.6 ~ 1.0kn)
+          </span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-2.5 text-xs">
+          <!-- 팁 1: 스테이 권장 시간 -->
+          <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800 flex flex-col gap-1">
+            <span class="text-slate-400 font-semibold flex items-center gap-1 text-[11px]">
+              <i class="fa-regular fa-clock text-yellow-400"></i> 권장 스테이 시간
+            </span>
+            <span id="tipStayTime" class="text-sm font-bold text-white">3 ~ 4초 집중 스테이</span>
+            <span class="text-[10px] text-slate-400" id="tipStayDesc">바닥 5cm 띄운 후 조류에 가짓줄이 수평으로 안정화되는 골든타임.</span>
+          </div>
+
+          <!-- 팁 2: 로드 챔질 템포 -->
+          <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800 flex flex-col gap-1">
+            <span class="text-slate-400 font-semibold flex items-center gap-1 text-[11px]">
+              <i class="fa-solid fa-hand-fist text-rose-400"></i> 입질 감지 & 챔질
+            </span>
+            <span id="tipHooking" class="text-sm font-bold text-white">초릿대 '까닥' 후 즉시 챔질</span>
+            <span class="text-[10px] text-slate-400" id="tipHookingDesc">갑오징어가 에기를 안고 조류에 밀려날 때 초릿대가 훅 고꾸라집니다.</span>
+          </div>
+
+          <!-- 팁 3: 리프트 & 폴링 조언 -->
+          <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800 flex flex-col gap-1">
+            <span class="text-slate-400 font-semibold flex items-center gap-1 text-[11px]">
+              <i class="fa-solid fa-arrows-up-down text-cyan-400"></i> 폴링 및 어필 요령
+            </span>
+            <span id="tipAction" class="text-sm font-bold text-white">슬로우 커브 폴링 유도</span>
+            <span class="text-[10px] text-slate-400" id="tipActionDesc">로드를 1m 높이로 리프트 후 천천히 내려 호를 그리며 침강시키세요.</span>
+          </div>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- =============================== -->
+  <!-- 3. 모달: 안내 및 권한 알림 박스 (alert 대체) -->
+  <!-- =============================== -->
+  <div id="modalBox" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-[#0F1D38] border border-cyan-500/50 rounded-2xl p-5 max-w-sm w-full shadow-2xl flex flex-col gap-3">
+      <div class="flex items-center gap-2.5 text-cyan-400">
+        <i id="modalIcon" class="fa-solid fa-circle-info text-xl"></i>
+        <h4 id="modalTitle" class="text-base font-bold text-white">알림</h4>
+      </div>
+      <p id="modalMsg" class="text-xs text-slate-300 leading-relaxed">내용</p>
+      <button onclick="closeModal()" class="w-full mt-2 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs transition">
+        확인
+      </button>
+    </div>
+  </div>
+
+  <!-- =============================== -->
+  <!-- 4. 자바스크립트 물리 계산 & 캔버스 엔진 -->
+  <!-- =============================== -->
+  <script>
+    // --- 전역 상태 ---
+    const state = {
+      navMode: 'drift',       // 'drift' (자유 표류) | 'hold' (배 잡기)
+      sog: 0.8,               // 배 대지속력 (knot)
+      currentSpeed: 0.8,      // 순수 조류 속력 (knot)
+      relativeSpeed: 0.56,    // 에기가 체감하는 상대 유속 (knot)
+      targetHeight: 12,       // 목표 에기 높이 (cm)
+      liftHeight: 5,          // 봉돌 띄움 높이 (cm)
+      egiType: 'slow',        // 'slow' | 'normal' | 'heavy'
+      keimura: false,         // 케이무라 UV 모드
+      isSimRunning: true,     // 캔버스 애니메이션 재생 여부
+      gpsWatching: false,     // GPS 추적 여부
+      gpsWatchId: null,
+      audioEnabled: true
+    };
+
+    // 에기 종류별 자체 순 침강력 (해수 부력 대비 가라앉는 힘 W_net, 단위 N 또는 상대비)
+    const EGI_SPECS = {
+      slow:   { name: '수평 슬로우', netWeight: 0.22, dragCoef: 0.85, label: '0.2g 침강' },
+      normal: { name: '표준 밸런스', netWeight: 0.45, dragCoef: 0.88, label: '0.45g 침강' },
+      heavy:  { name: '틴셀/고비중', netWeight: 0.85, dragCoef: 0.95, label: '0.8g 침강' }
+    };
+
+    // 오디오 컨텍스트 (Web Audio API)
+    let audioCtx = null;
+    function playBeep(freq = 600, duration = 0.08) {
+      if (!state.audioEnabled) return;
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) { /* ignore */ }
+    }
+
+    function toggleAudio() {
+      state.audioEnabled = !state.audioEnabled;
+      const btn = document.getElementById('audioBtn');
+      if (state.audioEnabled) {
+        btn.innerHTML = '<i class="fa-solid fa-volume-high"></i>';
+        btn.classList.replace('text-slate-500', 'text-yellow-400');
+        playBeep(880, 0.1);
+      } else {
+        btn.innerHTML = '<i class="fa-solid fa-volume-xmark"></i>';
+        btn.classList.replace('text-yellow-400', 'text-slate-500');
+      }
+    }
+
+    function showModal(title, msg, icon = 'fa-circle-info') {
+      document.getElementById('modalTitle').innerText = title;
+      document.getElementById('modalMsg').innerText = msg;
+      document.getElementById('modalIcon').className = `fa-solid ${icon} text-xl text-cyan-400`;
+      document.getElementById('modalBox').classList.remove('hidden');
+    }
+    function closeModal() {
+      document.getElementById('modalBox').classList.add('hidden');
+    }
+
+    // --- 1. 배 운항 모드 설정 ---
+    function setMode(mode) {
+      state.navMode = mode;
+      const driftBtn = document.getElementById('modeDriftBtn');
+      const holdBtn = document.getElementById('modeHoldBtn');
+      const desc = document.getElementById('modeDescription');
+      const currentGroup = document.getElementById('currentControlGroup');
+
+      if (mode === 'drift') {
+        driftBtn.className = 'py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 bg-cyan-500 text-slate-950 shadow-md';
+        holdBtn.className = 'py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 text-slate-400 hover:text-white';
+        desc.innerText = '바닥권 유속 감쇄(70%) 적용';
+        currentGroup.classList.remove('opacity-50');
+      } else {
+        holdBtn.className = 'py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 bg-cyan-500 text-slate-950 shadow-md';
+        driftBtn.className = 'py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 text-slate-400 hover:text-white';
+        desc.innerText = '엔진 정점 유지: 순수 조류 유속 100% 적용';
+      }
+      playBeep(520, 0.05);
+      calculatePhysics();
+    }
+
+    // --- 2. 에기 타입 설정 ---
+    function setEgiType(type) {
+      state.egiType = type;
+      ['slow', 'normal', 'heavy'].forEach(t => {
+        const btn = document.getElementById('egiType' + t.charAt(0).toUpperCase() + t.slice(1));
+        if (t === type) {
+          btn.className = 'py-1.5 px-2 rounded-lg text-[11px] font-bold border transition bg-cyan-900/50 text-cyan-300 border-cyan-500';
+        } else {
+          btn.className = 'py-1.5 px-2 rounded-lg text-[11px] font-bold border transition bg-slate-900 text-slate-400 border-slate-700';
+        }
+      });
+      playBeep(650, 0.05);
+      calculatePhysics();
+    }
+
+    // --- 3. 슬라이더 & 프리셋 반응 ---
+    function onParamChange() {
+      state.sog = parseFloat(document.getElementById('sogSlider').value);
+      state.currentSpeed = parseFloat(document.getElementById('currentSlider').value);
+      state.targetHeight = parseInt(document.getElementById('targetHeightSlider').value);
+      state.liftHeight = parseInt(document.getElementById('liftHeightSlider').value);
+
+      document.getElementById('sogVal').innerText = state.sog.toFixed(1);
+      document.getElementById('currentVal').innerText = state.currentSpeed.toFixed(1);
+      document.getElementById('targetHeightVal').innerText = state.targetHeight + ' cm';
+      document.getElementById('liftHeightVal').innerText = state.liftHeight + ' cm (스침)';
+
+      calculatePhysics();
+    }
+
+    function setSpeedPreset(sog, curr) {
+      document.getElementById('sogSlider').value = sog;
+      document.getElementById('currentSlider').value = curr;
+      onParamChange();
+      playBeep(700, 0.06);
+    }
+
+    // --- 4. 스마트폰 GPS 연동 ---
+    function toggleGPS() {
+      if (!navigator.geolocation) {
+        showModal('GPS 미지원', '사용 중인 브라우저가 위치정보(GPS) 센서를 지원하지 않습니다.', 'fa-triangle-exclamation');
+        return;
+      }
+
+      if (state.gpsWatching) {
+        // 정지
+        navigator.geolocation.clearWatch(state.gpsWatchId);
+        state.gpsWatching = false;
+        document.getElementById('gpsDot').className = 'w-2.5 h-2.5 rounded-full bg-slate-500';
+        document.getElementById('gpsStatusText').innerText = '스마트폰 GPS 연동';
+        document.getElementById('gpsToggleBtn').classList.remove('border-emerald-500', 'text-emerald-400');
+        showModal('GPS 연동 해제', '실시간 선속 측정을 중단하고 수동 슬라이더 모드로 복귀합니다.');
+      } else {
+        // 시작
+        document.getElementById('gpsStatusText').innerText = '위성 신호 탐색 중...';
+        document.getElementById('gpsDot').className = 'w-2.5 h-2.5 rounded-full bg-yellow-400 animate-ping';
+        
+        state.gpsWatchId = navigator.geolocation.watchPosition(
+          (pos) => {
+            state.gpsWatching = true;
+            document.getElementById('gpsDot').className = 'w-2.5 h-2.5 rounded-full bg-emerald-400';
+            document.getElementById('gpsToggleBtn').classList.add('border-emerald-500', 'text-emerald-400');
+
+            // speed: m/s -> knot (1 m/s = 1.94384 knots)
+            let speedKnots = 0.0;
+            if (pos.coords.speed !== null && pos.coords.speed >= 0) {
+              speedKnots = pos.coords.speed * 1.94384;
+            } else {
+              speedKnots = 0.8; // 속도 측정 불가시 기본값
+            }
+
+            // 슬라이더 반영
+            const clamped = Math.min(2.5, Math.max(0.0, speedKnots));
+            document.getElementById('sogSlider').value = clamped.toFixed(1);
+            state.sog = clamped;
+            document.getElementById('sogVal').innerText = clamped.toFixed(1);
+            document.getElementById('gpsStatusText').innerText = `GPS 수신중 (${clamped.toFixed(1)} kn)`;
+            calculatePhysics();
+          },
+          (err) => {
+            state.gpsWatching = false;
+            document.getElementById('gpsDot').className = 'w-2.5 h-2.5 rounded-full bg-rose-500';
+            document.getElementById('gpsStatusText').innerText = 'GPS 수신 실패';
+            showModal('GPS 접근 오류', `위치 권한을 확인해주세요. (${err.message})`, 'fa-triangle-exclamation');
+          },
+          { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }
+        );
+      }
+    }
+
+    // --- 5. 물리 역학 및 채비 추천 알고리즘 ---
+    let computedData = {
+      vRel: 0.56,
+      recBranch: 30,
+      recDropper: 10,
+      predEgiHeight: 12.0,
+      thetaDeg: 4.2,
+      recSinkerWeight: '14 ~ 16호',
+      isKillingZone: true
+    };
+
+    function calculatePhysics() {
+      // 1) 상대 유속 V_rel 계산
+      if (state.navMode === 'drift') {
+        // 배 흘림 모드: 바닥권 마찰 경계층에 의해 표층 SOG의 약 70% 체감
+        state.relativeSpeed = state.sog * 0.7;
+        document.getElementById('vrelSubtext').innerText = `배 흘림 보정: SOG ${state.sog.toFixed(1)}kn × 0.7`;
+      } else {
+        // 배 잡기(정점 유지): 조류 속도 그대로 에기에 작용
+        state.relativeSpeed = state.currentSpeed;
+        document.getElementById('vrelSubtext').innerText = `정점 유지: 조류 유속 ${state.currentSpeed.toFixed(1)}kn 직결`;
+      }
+      const v = Math.max(0.02, state.relativeSpeed);
+      document.getElementById('vrelVal').innerText = v.toFixed(2);
+
+      // 2) 에기 종류별 항력 vs 침강력 각도 (theta) 계산
+      const egiSpec = EGI_SPECS[state.egiType];
+      // 항력 계수 비례식: F_drag = k * (V^1.8)
+      // V가 커질수록 분모가 급격히 커져 tan(theta) -> 0 (수평 정렬)
+      const dragFactor = 1.6 * egiSpec.dragCoef * Math.pow(v, 1.75);
+      const tanTheta = egiSpec.netWeight / (dragFactor + 0.04);
+      let thetaRad = Math.atan(tanTheta);
+      let thetaDeg = thetaRad * (180 / Math.PI);
+      
+      // 최대 처짐각 38도, 최소 처짐각 0.5도로 클램핑
+      thetaDeg = Math.min(38.0, Math.max(0.8, thetaDeg));
+      thetaRad = thetaDeg * (Math.PI / 180);
+
+      // 3) 최적 가짓줄 길이 추천 (L_branch)
+      // 미유속: 나풀거림 극대화를 위해 길게 (35~40cm)
+      // 적정유속: 표준 30cm
+      // 강유속: 엉킴 방지 및 감도 향상을 위해 20~25cm
+      let recBranch = 30;
+      if (v < 0.35) {
+        recBranch = 38;
+      } else if (v < 0.65) {
+        recBranch = 33;
+      } else if (v < 1.1) {
+        recBranch = 30;
+      } else if (v < 1.5) {
+        recBranch = 25;
+      } else {
+        recBranch = 20;
+      }
+
+      // 4) 목표 높이 도달을 위한 '봉돌 단차(cm, 봉돌 포함)' 역산
+      // 공식: H_egi = h_lift + H_단차 - L_branch * sin(theta)
+      // H_단차 = H_target - h_lift + L_branch * sin(theta)
+      const verticalDrop = recBranch * Math.sin(thetaRad);
+      let calculatedDropper = state.targetHeight - state.liftHeight + verticalDrop;
+      let recDropper = Math.round(calculatedDropper);
+
+      // 최소 단차 제약 (봉돌 자체 크기가 5cm 내외이므로 최소 5cm 이상)
+      if (recDropper < 5) recDropper = 5;
+
+      // 5) 실제 세팅 시 예상 에기 높이 역산
+      const predEgiHeight = state.liftHeight + recDropper - verticalDrop;
+
+      // 6) 봉돌 호수 추천
+      let recSinkerWeight = '14 ~ 16호';
+      if (v < 0.35) recSinkerWeight = '10 ~ 12호';
+      else if (v < 0.75) recSinkerWeight = '12 ~ 14호';
+      else if (v < 1.2) recSinkerWeight = '14 ~ 16호';
+      else if (v < 1.6) recSinkerWeight = '18 ~ 20호';
+      else recSinkerWeight = '25 ~ 30호 이상';
+
+      // 7) 킬링존(10~15cm) 안착 여부 판별
+      const isKillingZone = (predEgiHeight >= 9.5 && predEgiHeight <= 15.5);
+
+      // 데이터 저장
+      computedData = {
+        vRel: v,
+        recBranch: recBranch,
+        recDropper: recDropper,
+        predEgiHeight: predEgiHeight,
+        thetaDeg: thetaDeg,
+        recSinkerWeight: recSinkerWeight,
+        isKillingZone: isKillingZone
+      };
+
+      // UI 렌더링
+      updateRecommendationUI();
+      updateTipsUI();
+    }
+
+    function updateRecommendationUI() {
+      document.getElementById('recDropperVal').innerText = computedData.recDropper;
+      document.getElementById('recBranchVal').innerText = computedData.recBranch;
+      document.getElementById('predEgiHeightVal').innerText = computedData.predEgiHeight.toFixed(1) + ' cm';
+      document.getElementById('recSinkerWeightVal').innerText = computedData.recSinkerWeight;
+      document.getElementById('branchAngleVal').innerText = `처짐 ${computedData.thetaDeg.toFixed(1)}°`;
+
+      // 킬링존 배지 상태
+      const badge = document.getElementById('hitZoneBadge');
+      if (computedData.isKillingZone) {
+        badge.className = 'px-2 py-0.5 rounded-full text-[11px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
+        badge.innerHTML = '🎯 킬링존(10~15cm) 정조준';
+      } else if (computedData.predEgiHeight < 9.5) {
+        badge.className = 'px-2 py-0.5 rounded-full text-[11px] font-black bg-rose-500/20 text-rose-300 border border-rose-500/40';
+        badge.innerHTML = '⚠️ 바닥 닿음 주의 (단차 상향 필요)';
+      } else {
+        badge.className = 'px-2 py-0.5 rounded-full text-[11px] font-black bg-amber-500/20 text-amber-300 border border-amber-500/40';
+        badge.innerHTML = '⚠️ 킬링존 상단 이탈 (단차 하향 필요)';
+      }
+
+      // 캔버스 하단 텍스트
+      document.getElementById('cvSinkerLift').innerText = state.liftHeight + ' cm';
+      document.getElementById('cvSwivelHeight').innerText = (state.liftHeight + computedData.recDropper) + ' cm';
+      document.getElementById('cvEgiHeight').innerText = computedData.predEgiHeight.toFixed(1) + ' cm';
+    }
+
+    function updateTipsUI() {
+      const v = computedData.vRel;
+      const condBadge = document.getElementById('flowConditionBadge');
+      const stayTime = document.getElementById('tipStayTime');
+      const stayDesc = document.getElementById('tipStayDesc');
+      const hooking = document.getElementById('tipHooking');
+      const hookDesc = document.getElementById('tipHookingDesc');
+      const action = document.getElementById('tipAction');
+      const actDesc = document.getElementById('tipActionDesc');
+
+      if (v < 0.4) {
+        condBadge.innerText = '미유속 / 정조 (0.4kn 미만)';
+        condBadge.className = 'text-[11px] px-2 py-0.5 rounded font-bold bg-amber-950 text-amber-300 border border-amber-800';
+        stayTime.innerText = '4 ~ 6초 여유로운 스테이';
+        stayDesc.innerText = '조류가 약하므로 가짓줄(38cm)이 천천히 가라앉으며 나풀거릴 시간을 충분히 주세요.';
+        hooking.innerText = '묵직함 확인 후 챔질';
+        hookDesc.innerText = '조류 밀림이 적어 초릿대 변화가 작을 수 있으므로 라인을 슬쩍 들어 무게감으로 확인하세요.';
+        action.innerText = '큰 리프트로 호기심 유발';
+        actDesc.innerText = '갑오징어 시야가 좁아지므로 로드를 1.5m 높이로 높게 들어 멀리 있는 개체를 불러모으세요.';
+      } else if (v < 1.1) {
+        condBadge.innerText = '황금 적정 유속 (0.4 ~ 1.1kn)';
+        condBadge.className = 'text-[11px] px-2 py-0.5 rounded font-bold bg-cyan-950 text-cyan-300 border border-cyan-800';
+        stayTime.innerText = '3 ~ 4초 집중 스테이';
+        stayDesc.innerText = '바닥 5cm 띄운 후 조류에 가짓줄이 완벽한 수평(4°)을 유지하는 최고의 바이트 타임입니다.';
+        hooking.innerText = "초릿대 '까닥' 후 즉시 챔질";
+        hookDesc.innerText = '갑오징어가 에기를 안고 조류에 밀려나면서 초릿대가 규칙적으로 2회 까닥거립니다.';
+        action.innerText = '슬로우 커브 폴링';
+        actDesc.innerText = '로드를 천천히 내리며 봉돌 안착 후 에기가 나풀거리며 내려오는 패턴을 보여주세요.';
+      } else {
+        condBadge.innerText = '본류 / 강유속 (1.1kn 이상)';
+        condBadge.className = 'text-[11px] px-2 py-0.5 rounded font-bold bg-rose-950 text-rose-300 border border-rose-800';
+        stayTime.innerText = '1.5 ~ 2.5초 빠른 템포 스테이';
+        stayDesc.innerText = '조류가 강해 채비가 쉽게 날리므로 스테이를 길게 끌지 말고 템포를 빠르게 가져가세요.';
+        hooking.innerText = '즉각적인 파워 챔질';
+        hookDesc.innerText = '조류 저항으로 로드가 휘어지므로, 바이트 시 두 손으로 확실하게 만세 챔질을 해야 바늘이 박힙니다.';
+        action.innerText = '짧은 저킹 후 숏 가짓줄 운용';
+        actDesc.innerText = '줄 엉킴 방지를 위해 20~25cm 숏 가짓줄을 쓰고 봉돌을 20호 이상 무겁게 쓰세요.';
+      }
+    }
+
+    // --- 6. 케이무라 UV 모드 토글 ---
+    function toggleKeimura() {
+      state.keimura = !state.keimura;
+      const btn = document.getElementById('keimuraBtn');
+      if (state.keimura) {
+        btn.className = 'px-2.5 py-1 rounded-md text-[11px] font-semibold transition bg-purple-600 text-white shadow-lg shadow-purple-500/50 flex items-center gap-1';
+        btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> UV 발광 ON';
+      } else {
+        btn.className = 'px-2.5 py-1 rounded-md text-[11px] font-semibold transition bg-purple-950/80 text-purple-300 border border-purple-700/60 hover:bg-purple-900 flex items-center gap-1';
+        btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles text-purple-400"></i> 케이무라 UV';
+      }
+      playBeep(state.keimura ? 900 : 450, 0.08);
+    }
+
+    function toggleSimulation() {
+      state.isSimRunning = !state.isSimRunning;
+      const btn = document.getElementById('simPlayBtn');
+      btn.innerHTML = state.isSimRunning ? '<i class="fa-solid fa-pause"></i>' : '<i class="fa-solid fa-play text-emerald-400"></i>';
+    }
+
+    // ==========================================
+    // 7. 인터랙티브 수중 2D 캔버스 엔진 (HTML5 Canvas)
+    // ==========================================
+    const canvas = document.getElementById('underwaterCanvas');
+    const ctx = canvas.getContext('2d');
+    let animFrameId = null;
+    let animTime = 0;
+
+    // 조류 파티클 시스템
+    const particles = [];
+    const PARTICLE_COUNT = 38;
+
+    function initParticles(w, h) {
+      particles.length = 0;
+      for (let i = 0; i < PARTICLE_COUNT; i++) {
+        particles.push({
+          x: Math.random() * w,
+          y: Math.random() * (h - 70) + 20,
+          len: Math.random() * 25 + 10,
+          speed: Math.random() * 0.8 + 0.6,
+          opacity: Math.random() * 0.35 + 0.15
+        });
+      }
+    }
+
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
+      initParticles(rect.width, rect.height);
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    // 캔버스 렌더링 루프
+    function renderCanvas() {
+      const w = canvas.getBoundingClientRect().width;
+      const h = canvas.getBoundingClientRect().height;
+
+      if (state.isSimRunning) {
+        animTime += 0.025;
+      }
+
+      ctx.clearRect(0, 0, w, h);
+
+      // 배경 그라데이션 (깊은 바닷속)
+      const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
+      bgGrad.addColorStop(0, '#040d1a');
+      bgGrad.addColorStop(0.7, '#07162c');
+      bgGrad.addColorStop(1, '#0e2440');
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, w, h);
+
+      // 조류 흐름 파티클 렌더링
+      const flowSpeedFactor = Math.max(0.2, computedData.vRel * 1.8);
+      ctx.strokeStyle = '#38bdf8';
+      particles.forEach(p => {
+        if (state.isSimRunning) {
+          p.x += p.speed * flowSpeedFactor;
+          if (p.x > w + 40) p.x = -40;
+        }
+        ctx.beginPath();
+        ctx.lineWidth = 1.2;
+        ctx.globalAlpha = p.opacity;
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.x + p.len * (flowSpeedFactor * 0.7), p.y);
+        ctx.stroke();
+      });
+      ctx.globalAlpha = 1.0;
+
+      // 물리 스케일 변환: 1cm = pxPerCm
+      const seabedY = h - 45; // 바닥 기준선 Y좌표
+      const pxPerCm = Math.min(5.2, (h * 0.55) / 35); // 높이에 맞춰 스케일 조정
+
+      // 1) 뻘/모래 바닥(Seabed) 렌더링
+      ctx.fillStyle = '#1c150c';
+      ctx.fillRect(0, seabedY, w, h - seabedY);
+
+      // 모래 표면 라인
+      ctx.strokeStyle = '#854d0e';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(0, seabedY);
+      for (let x = 0; x <= w; x += 30) {
+        const grainY = seabedY + Math.sin(x * 0.08 + animTime) * 1.5;
+        ctx.lineTo(x, grainY);
+      }
+      ctx.stroke();
+
+      // 모래 텍스처 파티클
+      ctx.fillStyle = '#a16207';
+      for (let i = 15; i < w; i += 45) {
+        ctx.beginPath();
+        ctx.arc(i, seabedY + 8, 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 2) 갑오징어 킬링존 (바닥 위 10 ~ 15cm) 하이라이트 밴드
+      const killZoneBottomY = seabedY - (10 * pxPerCm);
+      const killZoneTopY = seabedY - (15 * pxPerCm);
+      const killZoneHeight = killZoneBottomY - killZoneTopY;
+
+      ctx.fillStyle = 'rgba(16, 185, 129, 0.12)';
+      ctx.fillRect(0, killZoneTopY, w, killZoneHeight);
+
+      // 킬링존 점선 테두리
+      ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = 'rgba(52, 211, 153, 0.5)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(0, killZoneTopY); ctx.lineTo(w, killZoneTopY);
+      ctx.moveTo(0, killZoneBottomY); ctx.lineTo(w, killZoneBottomY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // 킬링존 텍스트 레이블 (우측 하단)
+      ctx.font = 'bold 10px Pretendard, sans-serif';
+      ctx.fillStyle = '#34d399';
+      ctx.fillText('TARGET KILLING ZONE (10~15cm)', w - 190, killZoneTopY + 14);
+
+      // 3) 채비 원점 (원줄 및 봉돌 배치)
+      const originX = w * 0.28; // 봉돌/원줄 X좌표
+
+      // 봉돌 위치: 바닥 스치듯 5cm 위
+      const sinkerBottomY = seabedY - (state.liftHeight * pxPerCm);
+      const sinkerHeightPx = 6.0 * pxPerCm; // 봉돌 자체 높이 약 6cm
+      const sinkerCenterY = sinkerBottomY - (sinkerHeightPx * 0.5);
+
+      // 삼각도래(분기점) 위치: 봉돌 바닥에서부터 H_단차만큼 위
+      const swivelY = seabedY - ((state.liftHeight + computedData.recDropper) * pxPerCm);
+
+      // (A) 상단 원줄 (배에서 내려오는 원줄)
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 2.0;
+      ctx.beginPath();
+      ctx.moveTo(originX - 10, 0);
+      ctx.lineTo(originX, swivelY);
+      ctx.stroke();
+
+      // (B) 단차 버림줄 (삼각도래 ➔ 봉돌)
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(originX, swivelY);
+      ctx.lineTo(originX, sinkerBottomY - sinkerHeightPx);
+      ctx.stroke();
+
+      // (C) 삼각도래 링
+      ctx.fillStyle = '#f8fafc';
+      ctx.beginPath();
+      ctx.arc(originX, swivelY, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // (D) 슬림 물방울 봉돌 렌더링
+      ctx.save();
+      ctx.translate(originX, sinkerCenterY);
+      ctx.fillStyle = '#475569';
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 7, sinkerHeightPx * 0.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      // 봉돌 호수 각인
+      ctx.font = 'bold 8px Pretendard, sans-serif';
+      ctx.fillStyle = '#cbd5e1';
+      ctx.textAlign = 'center';
+      ctx.fillText(computedData.recSinkerWeight.split('~')[0].trim(), 0, 3);
+      ctx.restore();
+
+      // 봉돌 5cm 띄움 치수선
+      ctx.strokeStyle = '#facc15';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(originX - 16, seabedY);
+      ctx.lineTo(originX - 16, sinkerBottomY);
+      ctx.moveTo(originX - 20, seabedY); ctx.lineTo(originX - 12, seabedY);
+      ctx.moveTo(originX - 20, sinkerBottomY); ctx.lineTo(originX - 12, sinkerBottomY);
+      ctx.stroke();
+      ctx.font = 'bold 9px Pretendard, sans-serif';
+      ctx.fillStyle = '#facc15';
+      ctx.textAlign = 'right';
+      ctx.fillText(`${state.liftHeight}cm`, originX - 22, (seabedY + sinkerBottomY) / 2 + 3);
+
+      // (E) 가짓줄 (Branch Line) 곡선 렌더링
+      const branchLenPx = computedData.recBranch * pxPerCm;
+      const thetaRad = computedData.thetaDeg * (Math.PI / 180);
+
+      // 조류에 따른 가짓줄 끝 에기 위치 계산
+      // X = originX + L * cos(theta), Y = swivelY + L * sin(theta) + 조류 떨림
+      const wobble = Math.sin(animTime * 3) * (1.2 / Math.max(0.5, computedData.vRel));
+      const egiX = originX + (branchLenPx * Math.cos(thetaRad));
+      const egiY = swivelY + (branchLenPx * Math.sin(thetaRad)) + wobble;
+
+      // 가짓줄은 조류 항력에 의해 살짝 부풀어 오르는 자연스러운 베지어 곡선
+      const ctrlX = originX + (branchLenPx * 0.45);
+      const ctrlY = swivelY + (branchLenPx * Math.sin(thetaRad) * 0.75) + (Math.sin(animTime * 2.5) * 1.5);
+
+      ctx.strokeStyle = '#06b6d4';
+      ctx.lineWidth = 2.8;
+      ctx.beginPath();
+      ctx.moveTo(originX, swivelY);
+      ctx.quadraticCurveTo(ctrlX, ctrlY, egiX - 16, egiY);
+      ctx.stroke();
+
+      // 가짓줄 길이 텍스트 태그
+      ctx.font = 'bold 9px Pretendard, sans-serif';
+      ctx.fillStyle = '#38bdf8';
+      ctx.textAlign = 'center';
+      ctx.fillText(`가짓줄 ${computedData.recBranch}cm`, ctrlX, ctrlY - 8);
+
+      // (F) 에기 (Egi) 렌더링
+      ctx.save();
+      ctx.translate(egiX, egiY);
+      // 에기 유영 각도 (수평 유지에 가깝되 머리가 살짝 들리거나 수평)
+      const egiAngle = -Math.sin(animTime * 2) * 0.05 + (computedData.thetaDeg * 0.005);
+      ctx.rotate(egiAngle);
+
+      // 케이무라 UV 글로우 모드 효과
+      if (state.keimura) {
+        ctx.shadowColor = '#c084fc';
+        ctx.shadowBlur = 18;
+      }
+
+      // 에기 몸통 (새우 유선형)
+      ctx.fillStyle = state.keimura ? '#a855f7' : '#ec4899';
+      ctx.beginPath();
+      ctx.moveTo(-16, 0); // 머리
+      ctx.bezierCurveTo(-10, -7, 10, -7, 18, -2); // 등
+      ctx.lineTo(24, 0); // 꼬리 바늘 연결부
+      ctx.bezierCurveTo(12, 6, -8, 6, -16, 0); // 배
+      ctx.fill();
+
+      // 에기 눈
+      ctx.fillStyle = '#facc15';
+      ctx.beginPath();
+      ctx.arc(-10, -1.5, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#000000';
+      ctx.beginPath();
+      ctx.arc(-10.5, -1.5, 1.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 가슴 날개 깃털 (Feathers)
+      ctx.strokeStyle = '#f8fafc';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(-6, 2); ctx.lineTo(-1, 8);
+      ctx.moveTo(-4, 2); ctx.lineTo(1, 8);
+      ctx.stroke();
+
+      // 꼬리 우산바늘(Squid Crown Hooks)
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(24, -2); ctx.lineTo(28, -6);
+      ctx.moveTo(24, 0); ctx.lineTo(29, 0);
+      ctx.moveTo(24, 2); ctx.lineTo(28, 6);
+      ctx.stroke();
+      ctx.restore();
+
+      // 에기 최종 높이 치수선 (바닥 ➔ 에기)
+      ctx.strokeStyle = computedData.isKillingZone ? '#34d399' : '#f43f5e';
+      ctx.lineWidth = 1.2;
+      ctx.setLineDash([2, 2]);
+      ctx.beginPath();
+      ctx.moveTo(egiX, seabedY);
+      ctx.lineTo(egiX, egiY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.font = 'bold 10px Pretendard, sans-serif';
+      ctx.fillStyle = computedData.isKillingZone ? '#34d399' : '#f43f5e';
+      ctx.textAlign = 'left';
+      ctx.fillText(`${computedData.predEgiHeight.toFixed(1)} cm`, egiX + 8, (seabedY + egiY) / 2);
+
+      // (G) 바닥에 은신해 에기를 노려보는 갑오징어 (Cuttlefish)
+      const cuttleX = Math.min(w - 70, egiX + 110);
+      const cuttleY = seabedY - 14 + Math.sin(animTime * 1.5) * 2;
+
+      ctx.save();
+      ctx.translate(cuttleX, cuttleY);
+
+      // 몸통
+      ctx.fillStyle = '#6b21a8';
+      ctx.strokeStyle = '#a855f7';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 32, 14, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // 지느러미(Fin) 나풀거림
+      ctx.strokeStyle = '#c084fc';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      for (let fx = -28; fx <= 28; fx += 8) {
+        const fy = -14 + Math.sin(fx * 0.2 + animTime * 4) * 2.5;
+        ctx.lineTo(fx, fy);
+      }
+      ctx.stroke();
+
+      // 갑오징어 W자 눈 (에기 방향을 응시)
+      ctx.fillStyle = '#facc15';
+      ctx.beginPath();
+      ctx.arc(-14, -3, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(-16, -3); ctx.lineTo(-14, -1.5); ctx.lineTo(-12, -3); // W자 동공
+      ctx.stroke();
+
+      // 입/다리 실루엣
+      ctx.strokeStyle = '#d8b4fe';
+      ctx.lineWidth = 2.0;
+      ctx.beginPath();
+      ctx.moveTo(-28, 0); ctx.lineTo(-38, -2);
+      ctx.moveTo(-28, 2); ctx.lineTo(-37, 3);
+      ctx.moveTo(-28, -2); ctx.lineTo(-36, -5);
+      ctx.stroke();
+
+      // 사정거리 조준선
+      ctx.setLineDash([3, 4]);
+      ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
+      ctx.beginPath();
+      ctx.moveTo(-38, 0);
+      ctx.lineTo(egiX - cuttleX + 25, egiY - cuttleY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.restore();
+
+      animFrameId = requestAnimationFrame(renderCanvas);
+    }
+
+    // --- 초기화 구동 ---
+    window.addEventListener('DOMContentLoaded', () => {
+      resizeCanvas();
+      calculatePhysics();
+      renderCanvas();
+    });
+  </script>
+</body>
+</html>
